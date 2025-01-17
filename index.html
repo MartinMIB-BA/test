@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Webmapping Group Assignment</title>
+    <meta charset="UTF-8" />
+    <link rel="stylesheet" type="text/css" href="daynight.css" />
+    <!-- <script src="leaflet-side-by-side-2.2.0/leaflet-side-by-side.js"></script> -->
+    <link
+      rel="stylesheet"
+      href="http://unpkg.com/leaflet@1.9.3/dist/leaflet.css"
+    />
+    <script src="http://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+
+    <!--     <link
+      rel="stylesheet"
+      href="http://cdn.leafletjs.com/leaflet-0.7.5/leaflet.css"
+    />
+    <script src="http://cdn.leafletjs.com/leaflet-0.7.5/leaflet.js"></script> -->
+  </head>
+
+  <body>
+    <header>
+      TU Wien - Webmapping - Simon Pfrogner 01029300 - Viktoria Penz 11804956 -
+      Sebastian L. Siegmund 01609045 - Sarah Volken 12221657
+    </header>
+    <div id="app"></div>
+
+    <h1>Day and Night Contrast</h1>
+
+    <table class="navigation">
+      <tr>
+        <th><a class="highlight" href="index.html">Map</a></th>
+        <th><a href="text.html">Explenation</a></th>
+        <th><a href="impressum.html">Impressum</a></th>
+        <th><a href="diary.html">Diary</a></th>
+      </tr>
+    </table>
+
+    <div class="main">
+      <br />
+      Slide between Day- & Night-Layer and explore the World! <br />
+      For more Information about our Points of Interest - click on the
+      Explenation-Site.
+      <button id="switch"><h3>Pointer</h3></button>
+      <button id="NiledeltaButton">
+        <h3>
+          <em>Zoom to </em><br />
+          Nile-Delta
+        </h3>
+      </button>
+      <button id="KoreaborderButton">
+        <h3><em>Zoom to </em><br />Korea Border</h3>
+      </button>
+      <button id="AustraliaButton">
+        <h3><em>Zoom to </em><br />Australia</h3></button
+      ><button id="MoscowButton">
+        <h3><em>Zoom to </em><br />Moscow</h3>
+      </button>
+
+      <div>
+        <div id="map-slider"></div>
+        <div id="map-pointer"></div>
+      </div>
+    </div>
+
+    <script src="index.js" type="text/javascript"></script>
+  </body>
+</html>
