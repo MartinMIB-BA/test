@@ -1,68 +1,80 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <title>Webmapping Group Assignment</title>
-    <meta charset="UTF-8" />
-    <link rel="stylesheet" type="text/css" href="daynight.css" />
-    <!-- <script src="leaflet-side-by-side-2.2.0/leaflet-side-by-side.js"></script> -->
-    <link
-      rel="stylesheet"
-      href="http://unpkg.com/leaflet@1.9.3/dist/leaflet.css"
-    />
-    <script src="http://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video & Weather Leaflet</title>
 
-    <!--     <link
-      rel="stylesheet"
-      href="http://cdn.leafletjs.com/leaflet-0.7.5/leaflet.css"
-    />
-    <script src="http://cdn.leafletjs.com/leaflet-0.7.5/leaflet.js"></script> -->
-  </head>
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
 
-  <body>
-    <header>
-      TU Wien - Webmapping - Simon Pfrogner 01029300 - Viktoria Penz 11804956 -
-      Sebastian L. Siegmund 01609045 - Sarah Volken 12221657
-    </header>
-    <div id="app"></div>
+    <style>
+        body { margin: 0; padding: 0; }
+        #map { width: 100%; height: 100vh; }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
 
-    <h1>Day and Night Contrast</h1>
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
 
-    <table class="navigation">
-      <tr>
-        <th><a class="highlight" href="index.html">Map</a></th>
-        <th><a href="text.html">Explenation</a></th>
-        <th><a href="impressum.html">Impressum</a></th>
-        <th><a href="diary.html">Diary</a></th>
-      </tr>
-    </table>
+    <script>
+        // Inicializácia mapy
+        var map = L.map('map').setView([48.7, 19.7], 8);
 
-    <div class="main">
-      <br />
-      Slide between Day- & Night-Layer and explore the World! <br />
-      For more Information about our Points of Interest - click on the
-      Explenation-Site.
-      <button id="switch"><h3>Pointer</h3></button>
-      <button id="NiledeltaButton">
-        <h3>
-          <em>Zoom to </em><br />
-          Nile-Delta
-        </h3>
-      </button>
-      <button id="KoreaborderButton">
-        <h3><em>Zoom to </em><br />Korea Border</h3>
-      </button>
-      <button id="AustraliaButton">
-        <h3><em>Zoom to </em><br />Australia</h3></button
-      ><button id="MoscowButton">
-        <h3><em>Zoom to </em><br />Moscow</h3>
-      </button>
+        // OSM vrstva
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
 
-      <div>
-        <div id="map-slider"></div>
-        <div id="map-pointer"></div>
-      </div>
-    </div>
+        // Vlastná ikona bicykla
+        var bikeIcon = L.icon({
+            iconUrl: 'bike.png',  
+            iconSize: [32, 32],
+            iconAnchor: [16, 32],
+            popupAnchor: [0, -32]
+        });
 
-    <script src="index.js" type="text/javascript"></script>
-  </body>
+        // Funkcia na získanie predpovede počasia z modelu ECMWF IFS 0.25°
+        async function getWeather(lat, lon) {
+            let url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=temperature_2m_max,precipitation_probability_max&timezone=Europe/Bratislava&models=ecmwf_ifs025`;
+            let response = await fetch(url);
+            let data = await response.json();
+            return data.daily;
+        }
+
+        // Funkcia na vytvorenie popupu s videom a počasím
+        async function createPopup(lat, lon, videoUrl) {
+            let weather = await getWeather(lat, lon);
+            let forecastHTML = "<b>Predpoveď na 3 dni (ECMWF IFS 0.25°):</b><br>";
+
+            for (let i = 0; i < 3; i++) {
+                forecastHTML += `<p><b>${weather.time[i]}</b> - 🌡 ${weather.temperature_2m_max[i]}°C, ☔ ${weather.precipitation_probability_max[i]}%</p>`;
+            }
+
+            return `
+                <iframe width="300" height="200" src="${videoUrl}" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+                ${forecastHTML}
+            `;
+        }
+
+        // Funkcia na pridanie markeru
+        function addBikeMarker(lat, lon, videoUrl) {
+            let marker = L.marker([lat, lon], { icon: bikeIcon }).addTo(map);
+            marker.on('click', async function () {
+                let popupContent = await createPopup(lat, lon, videoUrl);
+                marker.bindPopup(popupContent).openPopup();
+            });
+        }
+
+        // Pridanie bodov na mapu s videom a predpoveďou počasia
+        addBikeMarker(48.7550, 17.9364, "https://www.youtube.com/embed/rONEnED9x6g?start=15&autoplay=1"); // Kálnica
+        addBikeMarker(49.0135, 19.0117, "https://www.youtube.com/embed/OqcIO1tfVlc?start=15&autoplay=1"); // Jasenská
+        addBikeMarker(49.9094, 16.4321, "https://www.youtube.com/embed/KSGSn5qhcuw?start=15&autoplay=1"); // Peklák
+        addBikeMarker(50.1523, 16.8164, "https://www.youtube.com/embed/ikh8w7VOZxQ?start=15&autoplay=1"); // Dolní Morava
+        addBikeMarker(48.8831, 18.0486, "https://www.youtube.com/embed/R0zppRwnMoM?start=15&autoplay=1"); // Covid Trail - Trenčín
+        addBikeMarker(48.6177, 18.3758, "https://www.youtube.com/embed/hwuzacYSBk0?start=15&autoplay=1"); // Buddy - Baťove
+    </script>
+</body>
 </html>
