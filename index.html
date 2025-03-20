@@ -11,6 +11,21 @@
     <style>
         body { margin: 0; padding: 0; }
         #map { width: 100%; height: 100vh; }
+      
+        .leaflet-popup-content-wrapper {
+    padding: 6px!important;
+    border: 1px !important; /* Tenký rám, môžeš upraviť farbu a hrúbku */
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2) !important; /* Môžeš znížiť tieň */
+    background: rgba(255, 255, 255, 0.7) !important;
+}
+.leaflet-popup-content {
+    margin: 0 !important;
+    padding: 0 !important;
+}
+.leaflet-popup-tip {
+    display: none !important;
+}
+
     </style>
 </head>
 <body>
@@ -20,12 +35,70 @@
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
 
     <script>
-        var map = L.map('map').setView([48.7, 19.7], 8);
+        // replace with your own API key
+        const API_KEY = 'MtmYktALBTS4ltJvzKOQTl4tRH1fBUNZZFyWhqLdojo';
 
+        /*
+        We create the map and set its initial coordinates and zoom.
+        See https://leafletjs.com/reference.html#map
+        */
+        const map = L.map('map').setView([48.7, 19.7], 8);
+
+        /*
+        Then we add a raster tile layer with REST API Mapy.cz tiles
+        See https://leafletjs.com/reference.html#tilelayer
+        */
+        const tileLayers = {
+            'Outdoor': L.tileLayer(`https://api.mapy.cz/v1/maptiles/outdoor/256/{z}/{x}/{y}?apikey=${API_KEY}`, {
+         minZoom: 0,
+        maxZoom: 19,
+        attribution: '<a href="https://api.mapy.cz/copyright" target="_blank">&copy; Seznam.cz a.s. a další</a>',
+        }),
+            'Aerial': L.tileLayer(`https://api.mapy.cz/v1/maptiles/aerial/256/{z}/{x}/{y}?apikey=${API_KEY}`, {
+        minZoom: 0,
+        maxZoom: 19,
+        attribution: '<a href="https://api.mapy.cz/copyright" target="_blank">&copy; Seznam.cz a.s. a další</a>',
+        }),
         // OSM vrstva
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            'OSM': L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        }).addTo(map);
+        }),
+        };
+
+        
+        
+        //Then we add the first raster tile layer to the map.
+        tileLayers['OSM'].addTo(map);
+
+        // Leaflet has a built-in map control for switching layers.
+        L.control.layers(tileLayers).addTo(map);
+
+        /*
+        We also require you to include our logo somewhere over the map.
+        We create our own map control implementing a documented interface,
+        that shows a clickable logo.
+        See https://leafletjs.com/reference.html#control
+        */
+        const LogoControl = L.Control.extend({
+        options: {
+            position: 'bottomleft',
+         },
+
+        onAdd: function (map) {
+            const container = L.DomUtil.create('div');
+            const link = L.DomUtil.create('a', '', container);
+
+            link.setAttribute('href', 'http://mapy.cz/');
+            link.setAttribute('target', '_blank');
+            link.innerHTML = '<img src="https://api.mapy.cz/img/api/logo.svg" />';
+            L.DomEvent.disableClickPropagation(link);
+
+            return container;
+        },
+        });
+
+        // finally we add our LogoControl to the map
+        new LogoControl().addTo(map);
 
         // Ikona bicykla
         var bikeIcon = L.icon({
@@ -93,49 +166,78 @@ function calculateMudRisk(soilMoisture) {
     return { riskLevel, probability: probability.toFixed(1) };
 }
 
-// Funkcia na vytvorenie popupu s videom, predpoveďou a blatom
-async function createPopup(lat, lon, videoUrl) {
-    let weather = await getWeather(lat, lon);
-    let forecastHTML = "<b>Predpoveď na 3 dni (ECMWF IFS 0.25°):</b><br>";
+// Pomocná funkcia na formátovanie dátumu
+function formatDate(dateStr) {
+  let date = new Date(dateStr);
+  let day = date.getDate();
+  let month = date.getMonth() + 1; // mesiace sú od 0 do 11
+  let year = date.getFullYear();
+  
+  // Dvojmiestne hodnoty pre deň a mesiac
+  let dayStr = day < 10 ? '0' + day : day;
+  let monthStr = month < 10 ? '0' + month : month;
+  
+  // Názvy dní v týždni v slovenčine
+  const daysOfWeek = ["nedeľa", "pondelok", "utorok", "streda", "štvrtok", "piatok", "sobota"];
+  let dayOfWeek = daysOfWeek[date.getDay()];
+  
+  return `${dayStr}.${monthStr}.${year} ${dayOfWeek}`;
+}
 
+// Funkcia na vytvorenie popupu s videom, predpoveďou a blatom
+async function createPopup(lat, lon, videoUrl, locationName) {
+    let weather = await getWeather(lat, lon);
+    let forecastHTML = `<h3>${locationName}</h3><b>Predpoveď na 3 dni (ECMWF IFS 0.25°):</b><br>`;
     let dates = Object.keys(weather).slice(0, 3); // Zoberie len prvé 3 dni
 
     for (let date of dates) {
         let temp = weather[date].maxTemp;
         let rain = weather[date].totalRain;
         let soil = weather[date].avgSoilMoisture;
-        let mudRisk = calculateMudRisk(soil); // Výpočet pravdepodobnosti blata
+        let mudRisk = calculateMudRisk(soil); 
+        let rainRounded = Math.round(rain);
+        let formattedDate = formatDate(date);
 
         forecastHTML += `
-            <p><b>${date}</b><br> 
-            🌡 <b>${temp}°C</b>, ☔ <b>${rain} mm</b>
+            <p><b>${formattedDate}</b><br> 
+            🌡 <b>${temp}°C</b>, ☔ <b>${rainRounded} mm</b>
             🚴‍♂️ <b>Riziko blata:</b> ${mudRisk.riskLevel} (${mudRisk.probability}%)</p>
         `;
     }
 
     return `
-        <iframe width="300" height="200" src="${videoUrl}" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
-        ${forecastHTML}
-    `;
+    <iframe width="300" height="200" src="${videoUrl}" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+    <div style="
+          line-height: 1.2;
+          background: linear-gradient(rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.95)), url('hory.svg') no-repeat center center;
+                      rgba(255, 255, 255, 1.2);
+          background-size: cover;
+          padding: 10px;">
+      ${forecastHTML}
+    </div>
+`;
+
 }
 
-
         // Pridanie markerov
-        function addBikeMarker(lat, lon, videoUrl) {
+        function addBikeMarker(lat, lon, videoUrl, locationname) {
             let marker = L.marker([lat, lon], { icon: bikeIcon }).addTo(map);
             marker.on('click', async function () {
-                let popupContent = await createPopup(lat, lon, videoUrl);
+                let popupContent = await createPopup(lat, lon, videoUrl, locationname);
                 marker.bindPopup(popupContent).openPopup();
             });
         }
 
         // Pridanie bodov na mapu
-        addBikeMarker(48.7550, 17.9364, "https://www.youtube.com/embed/rONEnED9x6g?start=15&autoplay=1"); // Kálnica
-        addBikeMarker(49.0135, 19.0117, "https://www.youtube.com/embed/OqcIO1tfVlc?start=15&autoplay=1"); // Jasenská
-        addBikeMarker(49.9094, 16.4321, "https://www.youtube.com/embed/KSGSn5qhcuw?start=15&autoplay=1"); // Peklák
-        addBikeMarker(50.1523, 16.8164, "https://www.youtube.com/embed/ikh8w7VOZxQ?start=15&autoplay=1"); // Dolní Morava
-        addBikeMarker(48.8831, 18.0486, "https://www.youtube.com/embed/R0zppRwnMoM?start=15&autoplay=1"); // Covid Trail - Trenčín
-        addBikeMarker(48.6177, 18.3758, "https://www.youtube.com/embed/hwuzacYSBk0?start=15&autoplay=1"); // Buddy - Baťove
+        addBikeMarker(48.7550, 17.9364, "https://www.youtube.com/embed/rONEnED9x6g?start=15&autoplay=1", "Kálnica"); // Kálnica
+        addBikeMarker(49.0135, 19.0117, "https://www.youtube.com/embed/OqcIO1tfVlc?start=15&autoplay=1", "Jasenská Dolina"); // Jasenská
+        addBikeMarker(49.9094, 16.4321, "https://www.youtube.com/embed/KSGSn5qhcuw?start=15&autoplay=1", "Peklák"); // Peklák
+        addBikeMarker(50.1523, 16.8164, "https://www.youtube.com/embed/ikh8w7VOZxQ?start=15&autoplay=1", "Dolní Morava"); // Dolní Morava
+        addBikeMarker(48.8831, 18.0486, "https://www.youtube.com/embed/R0zppRwnMoM?start=15&autoplay=1", "Divotraily"); // Covid Trail - Trenčín
+        addBikeMarker(48.6177, 18.3758, "https://www.youtube.com/embed/hwuzacYSBk0?start=15&autoplay=1", "Baťove traily"); // Buddy - Baťove
+        addBikeMarker(48.2451, 17.1435, "", "Traily Biely Kríž"); // Bratislava
+        addBikeMarker(49.2202, 18.6887, "", "OKO trails"); // OKO trails
+        addBikeMarker(48.1854, 17.0969, "", "Koliba"); // Koliba
     </script>
 </body>
 </html>
