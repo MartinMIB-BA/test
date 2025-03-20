@@ -8,7 +8,7 @@
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
     
-    <style>
+<style>
         body { margin: 0; padding: 0; }
         #map { width: 100%; height: 100vh; }
       
@@ -17,16 +17,20 @@
     border: 1px !important; /* Tenký rám, môžeš upraviť farbu a hrúbku */
     box-shadow: 0 1px 3px rgba(0,0,0,0.2) !important; /* Môžeš znížiť tieň */
     background: rgba(255, 255, 255, 0.7) !important;
-}
-.leaflet-popup-content {
-    margin: 0 !important;
-    padding: 0 !important;
-}
-.leaflet-popup-tip {
-    display: none !important;
-}
-
-    </style>
+    }
+        .leaflet-popup-content {
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+        .leaflet-popup-tip {
+        display: none !important;
+    }
+        .leaflet-control-layers {
+        display: block !important;
+        opacity: 1 !important;
+        pointer-events: auto !important;
+    }
+</style>
 </head>
 <body>
     <div id="map"></div>
