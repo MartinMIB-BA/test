@@ -156,72 +156,71 @@
         }
 
         // Funkcia na výpočet pravdepodobnosti blata
-function calculateMudRisk(soilMoisture) {
-    let probability = ((soilMoisture - 0.30) / 0.15) * 100;
-    probability = Math.max(0, Math.min(100, probability)); // Orezanie na 0-100%
+        function calculateMudRisk(soilMoisture) {
+            let probability = ((soilMoisture - 0.30) / 0.15) * 100;
+            probability = Math.max(0, Math.min(100, probability)); // Orezanie na 0-100%
 
-    let riskLevel;
-    if (soilMoisture < 0.30) riskLevel = "Sucho 🔥";
-    else if (soilMoisture < 0.35) riskLevel = "Nízke ✅";
-    else if (soilMoisture < 0.39) riskLevel = "Stredné 💦";
-    else if (soilMoisture < 0.45) riskLevel = "Vysoké ⚠️";
-    else riskLevel = "Extrémne ❌";
+        let riskLevel;
+            if (soilMoisture < 0.30) riskLevel = "Sucho 🔥";
+            else if (soilMoisture < 0.35) riskLevel = "Nízke ✅";
+            else if (soilMoisture < 0.39) riskLevel = "Stredné 💦";
+            else if (soilMoisture < 0.45) riskLevel = "Vysoké ⚠️";
+            else riskLevel = "Extrémne ❌";
 
-    return { riskLevel, probability: probability.toFixed(1) };
-}
+            return { riskLevel, probability: probability.toFixed(1) };
+        }
 
-// Pomocná funkcia na formátovanie dátumu
-function formatDate(dateStr) {
-  let date = new Date(dateStr);
-  let day = date.getDate();
-  let month = date.getMonth() + 1; // mesiace sú od 0 do 11
-  let year = date.getFullYear();
+        // Pomocná funkcia na formátovanie dátumu
+        function formatDate(dateStr) {
+          let date = new Date(dateStr);
+          let day = date.getDate();
+          let month = date.getMonth() + 1; // mesiace sú od 0 do 11
+          let year = date.getFullYear();
   
-  // Dvojmiestne hodnoty pre deň a mesiac
-  let dayStr = day < 10 ? '0' + day : day;
-  let monthStr = month < 10 ? '0' + month : month;
+          // Dvojmiestne hodnoty pre deň a mesiac
+          let dayStr = day < 10 ? '0' + day : day;
+          let monthStr = month < 10 ? '0' + month : month;
   
-  // Názvy dní v týždni v slovenčine
-  const daysOfWeek = ["nedeľa", "pondelok", "utorok", "streda", "štvrtok", "piatok", "sobota"];
-  let dayOfWeek = daysOfWeek[date.getDay()];
+          // Názvy dní v týždni v slovenčine
+          const daysOfWeek = ["nedeľa", "pondelok", "utorok", "streda", "štvrtok", "piatok", "sobota"];
+          let dayOfWeek = daysOfWeek[date.getDay()];
   
-  return `${dayStr}.${monthStr}.${year} ${dayOfWeek}`;
-}
+          return `${dayStr}.${monthStr}.${year} ${dayOfWeek}`;
+        }
 
-// Funkcia na vytvorenie popupu s videom, predpoveďou a blatom
-async function createPopup(lat, lon, videoUrl, locationName) {
-    let weather = await getWeather(lat, lon);
-    let forecastHTML = `<h3>${locationName}</h3><b>Predpoveď na 3 dni (ECMWF IFS 0.25°):</b><br>`;
-    let dates = Object.keys(weather).slice(0, 3); // Zoberie len prvé 3 dni
+        // Funkcia na vytvorenie popupu s videom, predpoveďou a blatom
+        async function createPopup(lat, lon, videoUrl, locationName) {
+            let weather = await getWeather(lat, lon);
+            let forecastHTML = `<h3>${locationName}</h3><b>Predpoveď na 3 dni (ECMWF IFS 0.25°):</b><br>`;
+            let dates = Object.keys(weather).slice(0, 3); // Zoberie len prvé 3 dni
 
-    for (let date of dates) {
-        let temp = weather[date].maxTemp;
-        let rain = weather[date].totalRain;
-        let soil = weather[date].avgSoilMoisture;
-        let mudRisk = calculateMudRisk(soil); 
-        let rainRounded = Math.round(rain);
-        let formattedDate = formatDate(date);
+            for (let date of dates) {
+            let temp = weather[date].maxTemp;
+            let rain = weather[date].totalRain;
+            let soil = weather[date].avgSoilMoisture;
+            let mudRisk = calculateMudRisk(soil); 
+            let rainRounded = Math.round(rain);
+            let formattedDate = formatDate(date);
 
         forecastHTML += `
             <p><b>${formattedDate}</b><br> 
             🌡 <b>${temp}°C</b>, ☔ <b>${rainRounded} mm</b>
             🚴‍♂️ <b>Riziko blata:</b> ${mudRisk.riskLevel} (${mudRisk.probability}%)</p>
         `;
-    }
+        }
 
-    return `
-    <iframe width="300" height="200" src="${videoUrl}" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
-    <div style="
-          line-height: 1.2;
-          background: linear-gradient(rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.95)), url('hory.svg') no-repeat center center;
-                      rgba(255, 255, 255, 1.2);
-          background-size: cover;
-          padding: 10px;">
-      ${forecastHTML}
-    </div>
-`;
-
-}
+            return `
+        <iframe width="300" height="200" src="${videoUrl}" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+        <div style="
+              line-height: 1.2;
+              background: linear-gradient(rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.95)), url('hory.svg') no-repeat center center;
+                          rgba(255, 255, 255, 1.2);
+              background-size: cover;
+              padding: 10px;">
+          ${forecastHTML}
+        </div>
+        `;
+        }
 
         // Pridanie markerov
         function addBikeMarker(lat, lon, videoUrl, locationname) {
@@ -242,6 +241,7 @@ async function createPopup(lat, lon, videoUrl, locationName) {
         addBikeMarker(48.2451, 17.1435, "", "Traily Biely Kríž"); // Bratislava
         addBikeMarker(49.2202, 18.6887, "", "OKO trails"); // OKO trails
         addBikeMarker(48.1854, 17.0969, "", "Koliba"); // Koliba
+        addBikeMarker(48.7932, 18.5642, "", "Bojnice"); // Bojnice
     </script>
 </body>
 </html>
