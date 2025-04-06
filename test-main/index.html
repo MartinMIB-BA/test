@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+  <meta charset="UTF-8" />
+  <title>Trail Info Map</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="sidebar">
+    <h2>🚴‍♂️ MTB lokality</h2>
+    <p>Klikni na ikonu bicykla pre detaily.</p>
+  </div>
+
+  <div id="map"></div>
+  <div id="weather-panel"></div>
+
+  <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+  <script>
+    const API_KEY = 'MtmYktALBTS4ltJvzKOQTl4tRH1fBUNZZFyWhqLdojo';
+    const map = L.map('map').setView([48.7, 19.7], 8);
+
+    const tileLayers = {
+      'OSM': L.tileLayer('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href=\"https://www.openstreetmap.org/copyright\">OpenStreetMap</a>'
+      }),
+      'mapy.cz outdoor': L.tileLayer(`https://api.mapy.cz/v1/maptiles/outdoor/256/{z}/{x}/{y}?apikey=${API_KEY}`, {
+        minZoom: 0, maxZoom: 19,
+        attribution: '<a href=\"https://api.mapy.cz/copyright\" target=\"_blank\">&copy; Seznam.cz</a>',
+      })
+    };
+
+    tileLayers['OSM'].addTo(map);
+    L.control.layers(tileLayers).addTo(map);
+
+    const bikeIcon = L.icon({
+      iconUrl: 'bike.png',
+      iconSize: [32, 32],
+      iconAnchor: [16, 32],
+      popupAnchor: [0, -32]
+    });
+
+    async function getWeather(lat, lon) {
+      const url = "https://api.open-meteo.com/v1/forecast";
+      const params = {
+        latitude: lat,
+        longitude: lon,
+        hourly: ["temperature_2m", "soil_moisture_0_to_7cm", "precipitation"],
+        models: "ecmwf_ifs025",
+        timezone: "Europe/Bratislava"
+      };
+      const res = await fetch(`${url}?${new URLSearchParams(params)}`);
+      const data = await res.json();
+      const result = {};
+
+      data.hourly.time.forEach((t, i) => {
+        const date = t.split("T")[0];
+        if (!result[date]) result[date] = { maxTemp: -Infinity, totalRain: 0, avgSoil: [] };
+        result[date].maxTemp = Math.max(result[date].maxTemp, data.hourly.temperature_2m[i]);
+        result[date].totalRain += data.hourly.precipitation[i];
+        result[date].avgSoil.push(data.hourly.soil_moisture_0_to_7cm[i]);
+      });
+
+      for (let d in result) {
+        result[d].avgSoil = (result[d].avgSoil.reduce((a, b) => a + b, 0) / result[d].avgSoil.length).toFixed(3);
+      }
+      return result;
+    }
+
+    function calculateMudRisk(soil) {
+      let prob = ((soil - 0.30) / 0.15) * 100;
+      prob = Math.max(0, Math.min(100, prob));
+      let level =
+        soil < 0.30 ? "Suché 🔥" :
+        soil < 0.35 ? "Takmer suché ✅" :
+        soil < 0.39 ? "Mokro 💦" :
+        soil < 0.45 ? "Blato ⚠️" : "Bahenný kúpel ❌";
+      return { riskLevel: level, probability: prob.toFixed(1) };
+    }
+
+    function formatDateShort(dateStr) {
+      const d = new Date(dateStr);
+      const days = ["Ne", "Po", "Ut", "St", "Št", "Pi", "So"];
+      return `${days[d.getDay()]} ${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}`;
+    }
+
+    async function updateWeatherPanel(lat, lon) {
+      const weather = await getWeather(lat, lon);
+      const dates = Object.keys(weather).slice(0, 3);
+
+      let html = ``;
+      for (let d of dates) {
+        const w = weather[d];
+        const mud = calculateMudRisk(w.avgSoil);
+        html += `
+          <div class="day">
+            <span>${formatDateShort(d)}</span>
+            <span>🌡 ${w.maxTemp}°C</span>
+            <span>☔ ${Math.round(w.totalRain)} mm</span>
+            <span>🚴 ${mud.riskLevel} (${mud.probability}%)</span>
+          </div>`;
+      }
+
+      const panel = document.getElementById('weather-panel');
+      panel.innerHTML = html;
+      panel.style.display = 'flex';
+    }
+
+    function createSidebarContent(videoUrl, name) {
+  const sidebar = document.getElementById('sidebar');
+  let html = `<h3>${name}</h3>`;
+
+  if (videoUrl) {
+    html += `<iframe src="${videoUrl}" allow="autoplay; encrypted-media" allowfullscreen></iframe>`;
+  }
+
+  if (name === "Traily Biely Kríž") {
+    html += `<p>V súčasnej dobe pozostáva TrailBK z piatich trailov: TBK Jedna, TBK Dva, TBK Tri, Slalomka a Baník. Všetky uvedené traily sú jednosmerné a určené výhradne pre horskú cyklistiku. Ponúkajú rozličnú mieru obtiažnosti, pričom je možné väčšinu prekážok obísť, alebo prejsť menšou rýchlosťou v závislosti od technickej úrovne jazdcov. Predpokladom sú aspoň základné skúsenosti s jazdou v teréne. Traily sú označené žltým C, zároveň však v mapách a infotabuliach rozdeľujeme jednotlivé traily podľa značenia IMBA a to na základe obtiažnosti.</p>`;
+  }
+
+  if (name === "Baťove traily") {
+    html += `<p>
+  🍽️ <a href="https://www.salas-partizanske.sk/" target="_blank">Reštaurácia</a> priamo pod trailami<br>
+  🅿️ Bezplatné parkovanie pod trailami pri reštaurácii<br>
+  🚿 Možnosť umyť bicykel<br>
+  <br>
+  Traily<br>
+   🔵 Vox (flow)<br>
+   🔴 <a href="https://www.youtube.com/embed/hwuzacYSBk0?autoplay=1" target="_blank">Buddy</a> (flow/freeride)<br>
+   🔴 <a href="https://www.youtube.com/embed/HGlpSp101jA?autoplay=1" target="_blank">Panorama</a> (enduro)<br>
+   ⚫ Green Rock (enduro)<br>
+
+
+  
+</p>`;
+
+  }
+  
+
+  sidebar.innerHTML = html;
+}
+
+
+    function addBikeMarker(lat, lon, videoUrl, name) {
+      const marker = L.marker([lat, lon], { icon: bikeIcon }).addTo(map);
+      marker.on('click', async () => {
+        createSidebarContent(videoUrl, name);
+        await updateWeatherPanel(lat, lon);
+      });
+    }
+
+    // Lokality
+    addBikeMarker(48.7550, 17.9364, "https://www.youtube.com/embed/rONEnED9x6g?start=15&autoplay=1", "Kálnica");
+    addBikeMarker(49.0135, 19.0117, "https://www.youtube.com/embed/OqcIO1tfVlc?start=15&autoplay=1", "Jasenská Dolina");
+    addBikeMarker(49.9094, 16.4321, "https://www.youtube.com/embed/KSGSn5qhcuw?start=15&autoplay=1", "Peklák");
+    addBikeMarker(50.1523, 16.8164, "https://www.youtube.com/embed/ikh8w7VOZxQ?start=15&autoplay=1", "Dolní Morava");
+    addBikeMarker(48.8831, 18.0486, "https://www.youtube.com/embed/R0zppRwnMoM?start=15&autoplay=1", "Divotraily");
+    addBikeMarker(48.6177, 18.3758, "https://www.youtube.com/embed/hwuzacYSBk0?start=15", "Baťove traily");
+    addBikeMarker(48.2451, 17.1435, "", "Traily Biely Kríž");
+    addBikeMarker(49.2202, 18.6887, "", "OKO trails");
+    addBikeMarker(48.1854, 17.0969, "", "Koliba");
+    addBikeMarker(48.7932, 18.5642, "", "Bojnice");
+    addBikeMarker(48.3619, 18.0894, "", "Nitrails");
+  </script>
+</body>
+</html>
